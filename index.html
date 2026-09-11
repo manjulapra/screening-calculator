@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Screening & Time Calculator</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 16px;
+      background-color: #f0f2f5;
+      color: #1c1e21;
+      margin: 0;
+    }
+    .container { max-width: 440px; margin: 0 auto; }
+    .card {
+      background: #ffffff;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-size: 1.15rem;
+      color: #005A9C;
+      margin-top: 0;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #eef2f7;
+    }
+    label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: block;
+      margin-top: 12px;
+      color: #4a5568;
+    }
+    input {
+      width: 100%;
+      height: 44px;
+      padding: 8px 12px;
+      margin-top: 4px;
+      border: 1px solid #cbd5e0;
+      border-radius: 8px;
+      font-size: 1rem;
+      background: #fafafa;
+      -webkit-appearance: none;
+    }
+    input:focus {
+      outline: none;
+      border-color: #005A9C;
+      background: #ffffff;
+    }
+    .results {
+      margin-top: 16px;
+      padding: 14px;
+      background: #ebf4ff;
+      border-radius: 8px;
+      border-left: 4px solid #005A9C;
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 0.95rem;
+    }
+    .result-row:not(:last-child) {
+      border-bottom: 1px solid #d0e3f7;
+    }
+    .result-val {
+      font-weight: 700;
+      color: #003C6C;
+    }
+    .btn-calc {
+      width: 100%;
+      height: 44px;
+      background-color: #005A9C;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 14px;
+      cursor: pointer;
+    }
+    .btn-calc:active {
+      background-color: #003C6C;
+    }
+    .btn-reset {
+      background-color: #e2e8f0;
+      color: #4a5568;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin-top: 10px;
+      float: right;
+    }
+    .clear { clear: both; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 21-Day Date Calculator Section -->
+    <div class="card">
+      <h2>📅 21-Day Screening Calculator</h2>
+      
+      <label for="referenceDate">Today's Date / Flight Date:</label>
+      <input type="date" id="referenceDate">
+
+      <button type="button" class="btn-calc" onclick="calculate21Days()">Calculate 21 Days</button>
+
+      <div class="results">
+        <div class="result-row">
+          <span>Selected Date:</span>
+          <span id="selectedDateDisplay" class="result-val">--</span>
+        </div>
+        <div class="result-row">
+          <span style="font-weight:600;">21 Days Before:</span>
+          <span id="past21DateDisplay" class="result-val" style="color: #c53030;">--</span>
+        </div>
+      </div>
+      <button type="button" class="btn-reset" onclick="reset21Day()">Reset to Today</button>
+      <div class="clear"></div>
+    </div>
+
+    <!-- Flight Screening Times Section -->
+    <div class="card">
+      <h2>⏱️ Flight Screening Times</h2>
+      
+      <label for="donningStart">Donning PPE Start Time:</label>
+      <input type="time" id="donningStart">
+
+      <label for="screenStart">Screening Start Time:</label>
+      <input type="time" id="screenStart">
+
+      <label for="doffingEnd">Doffing PPE End Time:</label>
+      <input type="time" id="doffingEnd">
+
+      <label for="staffCount">Total Staff Involved:</label>
+      <input type="number" id="staffCount" value="1" min="1" inputmode="numeric">
+
+      <button type="button" class="btn-calc" onclick="calculateScreening()">Calculate Times</button>
+
+      <div class="results">
+        <div class="result-row">
+          <span>Staff Time (per person):</span>
+          <span id="staffTime" class="result-val">--</span>
+        </div>
+        <div class="result-row">
+          <span>Screening Duration:</span>
+          <span id="screeningTime" class="result-val">--</span>
+        </div>
+        <div class="result-row">
+          <span style="font-weight:600;">Total Person-Minutes (+5 min):</span>
+          <span id="totalStaffTime" class="result-val">--</span>
+        </div>
+      </div>
+      <button type="button" class="btn-reset" onclick="resetScreening()">Clear Times</button>
+      <div class="clear"></div>
+    </div>
+
+  </div>
+
+  <script>
+    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function formatCustomDate(d) {
+      return dayNames[d.getDay()] + ", " + monthNames[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+    }
+
+    function calculate21Days() {
+      var dateInput = document.getElementById('referenceDate');
+      var val = dateInput.value;
+      if (!val) return;
+
+      var parts = val.split('-');
+      var y = parseInt(parts[0], 10);
+      var m = parseInt(parts[1], 10) - 1;
+      var d = parseInt(parts[2], 10);
+
+      var selDate = new Date(y, m, d);
+      var pastDate = new Date(y, m, d - 21);
+
+      document.getElementById('selectedDateDisplay').innerText = formatCustomDate(selDate);
+      document.getElementById('past21DateDisplay').innerText = formatCustomDate(pastDate);
+    }
+
+    function parseMin(val) {
+      if (!val) return null;
+      var p = val.split(':');
+      if (p.length < 2) return null;
+      return (parseInt(p[0], 10) * 60) + parseInt(p[1], 10);
+    }
+
+    function calculateScreening() {
+      var don = parseMin(document.getElementById('donningStart').value);
+      var screen = parseMin(document.getElementById('screenStart').value);
+      var doff = parseMin(document.getElementById('doffingEnd').value);
+      var staff = parseInt(document.getElementById('staffCount').value, 10) || 0;
+
+      var staffDur = null;
+      if (don !== null && doff !== null) {
+        staffDur = doff >= don ? (doff - don) : (1440 - don + doff);
+        document.getElementById('staffTime').innerText = staffDur + " mins";
+      } else {
+        document.getElementById('staffTime').innerText = "--";
+      }
+
+      if (screen !== null && doff !== null) {
+        var screenDur = doff >= screen ? (doff - screen) : (1440 - screen + doff);
+        document.getElementById('screeningTime').innerText = screenDur + " mins";
+      } else {
+        document.getElementById('screeningTime').innerText = "--";
+      }
+
+      if (staffDur !== null && staff > 0) {
+        var total = (staffDur * staff) + 5;
+        document.getElementById('totalStaffTime').innerText = total + " mins";
+      } else {
+        document.getElementById('totalStaffTime').innerText = "--";
+      }
+    }
+
+    function initPage() {
+      var now = new Date();
+      var y = now.getFullYear();
+      var m = String(now.getMonth() + 1);
+      if (m.length < 2) m = '0' + m;
+      var d = String(now.getDate());
+      if (d.length < 2) d = '0' + d;
+
+      var dateEl = document.getElementById('referenceDate');
+      if (dateEl) {
+        dateEl.value = y + '-' + m + '-' + d;
+        calculate21Days();
+      }
+
+      // Attach real-time listeners for all inputs
+      var inputs = document.querySelectorAll('input');
+      for (var i = 0; i < inputs.length; i++) {
+        inputs[i].addEventListener('input', autoUpdate);
+        inputs[i].addEventListener('change', autoUpdate);
+        inputs[i].addEventListener('blur', autoUpdate);
+      }
+    }
+
+    function autoUpdate() {
+      calculate21Days();
+      calculateScreening();
+    }
+
+    function reset21Day() {
+      initPage();
+    }
+
+    function resetScreening() {
+      document.getElementById('donningStart').value = "";
+      document.getElementById('screenStart').value = "";
+      document.getElementById('doffingEnd').value = "";
+      document.getElementById('staffCount').value = "1";
+      document.getElementById('staffTime').innerText = "--";
+      document.getElementById('screeningTime').innerText = "--";
+      document.getElementById('totalStaffTime').innerText = "--";
+    }
+
+    // Direct initialization
+    initPage();
+    window.addEventListener('pageshow', initPage);
+    window.addEventListener('load', initPage);
+  </script>
+</body>
+</html>
