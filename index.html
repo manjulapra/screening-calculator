@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#005A9C">
   <title>Screening & Time Calculator</title>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -14,6 +17,8 @@
       margin: 0;
     }
     .container { max-width: 440px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 16px; }
+    .header h1 { font-size: 1.3rem; color: #005A9C; margin: 0; }
     .card {
       background: #ffffff;
       padding: 18px;
@@ -22,7 +27,7 @@
       margin-bottom: 16px;
     }
     h2 {
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       color: #005A9C;
       margin-top: 0;
       margin-bottom: 12px;
@@ -105,6 +110,9 @@
 </head>
 <body>
   <div class="container">
+    <div class="header">
+      <h1>Screening Operations Calculator</h1>
+    </div>
 
     <!-- 21-Day Date Calculator Section -->
     <div class="card">
@@ -121,7 +129,7 @@
           <span id="selectedDateDisplay" class="result-val">--</span>
         </div>
         <div class="result-row">
-          <span style="font-weight:600;">Screen if left the country on or after:</span>
+          <span style="font-weight:600;">21 Days Before (Depart on/after):</span>
           <span id="past21DateDisplay" class="result-val" style="color: #c53030;">--</span>
         </div>
       </div>
@@ -129,9 +137,9 @@
       <div class="clear"></div>
     </div>
 
-    <!-- Flight Screening Times Section -->
+    <!-- Flight Screening & FPHA Times Section -->
     <div class="card">
-      <h2>⏱️ Flight Screening Times</h2>
+      <h2>⏱️ Flight Screening & FPHA Times</h2>
       
       <label for="donningStart">Donning PPE Start Time:</label>
       <input type="time" id="donningStart">
@@ -141,6 +149,12 @@
 
       <label for="doffingEnd">Doffing PPE End Time:</label>
       <input type="time" id="doffingEnd">
+
+      <label for="fphaStart">FPHA Start Time:</label>
+      <input type="time" id="fphaStart">
+
+      <label for="fphaEnd">FPHA End Time:</label>
+      <input type="time" id="fphaEnd">
 
       <label for="staffCount">Total Staff Involved:</label>
       <input type="number" id="staffCount" value="1" min="1" inputmode="numeric">
@@ -155,6 +169,10 @@
         <div class="result-row">
           <span>Screening Duration:</span>
           <span id="screeningTime" class="result-val">--</span>
+        </div>
+        <div class="result-row">
+          <span>FPHA Duration:</span>
+          <span id="fphaDuration" class="result-val">--</span>
         </div>
         <div class="result-row">
           <span style="font-weight:600;">Total Person-Minutes (+5 min):</span>
@@ -172,6 +190,7 @@
     var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     function formatCustomDate(d) {
+      if (!d || isNaN(d)) return "--";
       return dayNames[d.getDay()] + ", " + monthNames[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
     }
 
@@ -203,6 +222,8 @@
       var don = parseMin(document.getElementById('donningStart').value);
       var screen = parseMin(document.getElementById('screenStart').value);
       var doff = parseMin(document.getElementById('doffingEnd').value);
+      var fStart = parseMin(document.getElementById('fphaStart').value);
+      var fEnd = parseMin(document.getElementById('fphaEnd').value);
       var staff = parseInt(document.getElementById('staffCount').value, 10) || 0;
 
       var staffDur = null;
@@ -220,6 +241,13 @@
         document.getElementById('screeningTime').innerText = "--";
       }
 
+      if (fStart !== null && fEnd !== null) {
+        var fphaDur = fEnd >= fStart ? (fEnd - fStart) : (1440 - fStart + fEnd);
+        document.getElementById('fphaDuration').innerText = fphaDur + " mins";
+      } else {
+        document.getElementById('fphaDuration').innerText = "--";
+      }
+
       if (staffDur !== null && staff > 0) {
         var total = (staffDur * staff) + 5;
         document.getElementById('totalStaffTime').innerText = total + " mins";
@@ -231,27 +259,15 @@
     function initPage() {
       var now = new Date();
       var y = now.getFullYear();
-      var m = String(now.getMonth() + 1);
-      if (m.length < 2) m = '0' + m;
-      var d = String(now.getDate());
-      if (d.length < 2) d = '0' + d;
+      var m = String(now.getMonth() + 1).padStart(2, '0');
+      var d = String(now.getDate()).padStart(2, '0');
 
-      var dateEl = document.getElementById('referenceDate');
-      if (dateEl) {
-        dateEl.value = y + '-' + m + '-' + d;
-        calculate21Days();
-      }
-
-      // Attach real-time listeners for all inputs
-      var inputs = document.querySelectorAll('input');
-      for (var i = 0; i < inputs.length; i++) {
-        inputs[i].addEventListener('input', autoUpdate);
-        inputs[i].addEventListener('change', autoUpdate);
-        inputs[i].addEventListener('blur', autoUpdate);
-      }
+      document.getElementById('referenceDate').value = y + '-' + m + '-' + d;
+      runAllCalculations(); // Run on initial load
     }
-
-    function autoUpdate() {
+    
+    // This function runs all calculations for real-time updates
+    function runAllCalculations() {
       calculate21Days();
       calculateScreening();
     }
@@ -264,16 +280,22 @@
       document.getElementById('donningStart').value = "";
       document.getElementById('screenStart').value = "";
       document.getElementById('doffingEnd').value = "";
+      document.getElementById('fphaStart').value = "";
+      document.getElementById('fphaEnd').value = "";
       document.getElementById('staffCount').value = "1";
-      document.getElementById('staffTime').innerText = "--";
-      document.getElementById('screeningTime').innerText = "--";
-      document.getElementById('totalStaffTime').innerText = "--";
+      runAllCalculations(); // Recalculate to show "--"
+    }
+    
+    // Attach listeners for real-time updates on browsers that support it
+    var inputs = document.querySelectorAll('input');
+    for (var i = 0; i < inputs.length; i++) {
+      inputs[i].addEventListener('input', runAllCalculations);
+      inputs[i].addEventListener('change', runAllCalculations);
     }
 
-    // Direct initialization
-    initPage();
-    window.addEventListener('pageshow', initPage);
+    // Initialize on load
     window.addEventListener('load', initPage);
+    window.addEventListener('pageshow', initPage); // For back/forward cache
   </script>
 </body>
 </html>
